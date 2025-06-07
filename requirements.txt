@@ -1,7 +1,9 @@
 streamlit
-python-dotenv
-pandas
-PyMuPDF
 sentence-transformers
-google-generativeai
+torch
+transformers
+pandas
 openpyxl
+PyMuPDF
+python-dotenv
+google-generativeai
