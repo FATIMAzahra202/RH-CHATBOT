@@ -52,11 +52,12 @@ def semantic_search_faq(question, threshold=0.5):
     best_score = cos_scores.max().item()
     if best_score >= threshold:
         best_idx = cos_scores.argmax().item()
-        answer = faq_data[faq_questions[best_idx]].strip()
+        matched_question = faq_questions[best_idx]
+        answer = faq_data[matched_question].strip()
         if answer.lower() in ["", "nan", "none"]:
-            return "__VIDE__"
-        return answer
-    return None
+            return "__VIDE__", matched_question
+        return answer, matched_question
+    return None, None
 
 def show_logo(path):
     with open(path, "rb") as f:
@@ -98,26 +99,23 @@ with st.form("chat_form", clear_on_submit=True):
 if submitted and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     clean_input = normalize(user_input)
-    response = semantic_search_faq(clean_input)
+    response, matched_question = semantic_search_faq(clean_input)
 
-    if response == "__VIDE__":
-        response = "❗ La question existe dans la FAQ, mais la réponse n’a pas encore été renseignée par le service RH."
+    if response and response != "__VIDE__":
         st.session_state.messages.append({"role": "bot", "content": response})
         st.rerun()
-
-    if not response:
+    else:
         with st.spinner("✍️ Je rédige la réponse…"):
-            prompt = user_input
+            st.info("❗ Je n’ai pas trouvé de réponse claire dans la FAQ. Je vais demander à Gemini…")
             if st.session_state.doc_content:
                 limited_doc = " ".join(st.session_state.doc_content.split()[:1000])
                 prompt = f"""Voici un extrait d’un document RH :\n\n\"\"\"{limited_doc}\"\"\"\n\nQuestion RH d’un employé : {user_input}\nRéponds de façon claire et directe."""
-                st.info("❗ Réponse non disponible dans la FAQ. Je vais demander à Gemini…")
             else:
                 prompt = f"Question RH d’un employé : {user_input}\nRéponds de façon claire et directe."
-            response = ask_gemini(prompt)
+            gemini_response = ask_gemini(prompt)
 
-    st.session_state.messages.append({"role": "bot", "content": response})
-    st.rerun()
+        st.session_state.messages.append({"role": "bot", "content": gemini_response})
+        st.rerun()
 
 def save_chat_history():
     df = pd.DataFrame([
